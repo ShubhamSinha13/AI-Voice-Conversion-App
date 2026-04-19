@@ -54,4 +54,30 @@ class Voice {
       'created_at': createdAt.toIso8601String(),
     };
   }
+
+  Voice copyWith({
+    int? id,
+    String? name,
+    String? type,
+    String? category,
+    String? predefinedName,
+    String? userDefinedName,
+    int? sampleCount,
+    double? accuracyPercentage,
+    bool? isPredefined,
+    DateTime? createdAt,
+  }) {
+    return Voice(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      predefinedName: predefinedName ?? this.predefinedName,
+      userDefinedName: userDefinedName ?? this.userDefinedName,
+      sampleCount: sampleCount ?? this.sampleCount,
+      accuracyPercentage: accuracyPercentage ?? this.accuracyPercentage,
+      isPredefined: isPredefined ?? this.isPredefined,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const VoiceConverterApp());
+  runApp(const ProviderScope(child: VoiceConverterApp()));
 }
 
 class VoiceConverterApp extends StatelessWidget {
