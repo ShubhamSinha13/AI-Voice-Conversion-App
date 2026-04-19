@@ -1,0 +1,10 @@
+# Root .gitignore
+.DS_Store
+.vscode/
+.idea/
+*.log
+.env
+venv/
+node_modules/
+build/
+dist/

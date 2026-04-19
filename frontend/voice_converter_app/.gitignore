@@ -1,0 +1,57 @@
+# Build files
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Dependency directories
+.pub-cache/
+.pub/
+pubspec.lock
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+*.sublime-workspace
+*.sublime-project
+.metadata
+
+# iOS
+ios/.symlinks/
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Podfile.lock
+
+# Android
+android/.gradle/
+android/gradle-wrapper.jar
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+android/key.properties
+
+# App files
+app.*.apk
+app.*.aab
+*.jks
+*.keystore
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
