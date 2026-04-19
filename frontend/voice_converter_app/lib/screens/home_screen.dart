@@ -4,6 +4,8 @@ import '../models/voice.dart';
 import '../providers/auth_provider.dart';
 import '../providers/voice_provider.dart';
 import 'voice_input_screen.dart';
+import 'voice_detail_screen.dart';
+import 'settings_screen.dart';
 
 /// Home screen with two tabs: Predefined Voices and My Custom Voices
 class HomeScreen extends ConsumerStatefulWidget {
@@ -38,6 +40,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         title: const Text('Voice Converter'),
         elevation: 0,
         actions: [
+          // Settings Button
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
           // User Profile Button
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -316,31 +329,13 @@ class CustomVoicesTab extends ConsumerWidget {
                     subtitle: Text(
                       '$accuracy% • ${voice.sampleCount} sample${voice.sampleCount != 1 ? 's' : ''}',
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Using ${voice.name}'),
-                              ),
-                            );
-                          },
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => VoiceDetailScreen(voice: voice),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Voice deleted'),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 );
               },
