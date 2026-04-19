@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice.dart';
 import '../providers/auth_provider.dart';
+import '../providers/voice_provider.dart';
+import 'voice_input_screen.dart';
 
 /// Home screen with two tabs: Predefined Voices and My Custom Voices
 class HomeScreen extends ConsumerStatefulWidget {
@@ -217,11 +219,13 @@ class PredefinedVoicesTab extends StatelessWidget {
 }
 
 /// Custom Voices Tab
-class CustomVoicesTab extends StatelessWidget {
+class CustomVoicesTab extends ConsumerWidget {
   const CustomVoicesTab({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customVoices = ref.watch(customVoicesProvider);
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -234,37 +238,21 @@ class CustomVoicesTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Record or Upload Options
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Record voice feature - Coming soon'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.mic),
-                  label: const Text('Record'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Upload from storage - Coming soon'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload'),
-                ),
-              ),
-            ],
+          // Create Voice Button
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const VoiceInputScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Create New Voice'),
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -276,31 +264,87 @@ class CustomVoicesTab extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Placeholder for custom voices list
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(Icons.person_add_alt, size: 48, color: Colors.grey[400]),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No custom voices yet',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Record or upload a voice to get started',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+          // Custom voices list
+          if (customVoices.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.mic_none,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No custom voices yet',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create your first voice to get started',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: customVoices.length,
+              itemBuilder: (context, index) {
+                final voice = customVoices[index];
+                final accuracy = voice.accuracyPercentage.toInt();
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.mic,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    title: Text(voice.userDefinedName ?? voice.name),
+                    subtitle: Text(
+                      '$accuracy% • ${voice.sampleCount} sample${voice.sampleCount != 1 ? 's' : ''}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Using ${voice.name}'),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Voice deleted'),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
         ],
       ),
     );
