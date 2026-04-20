@@ -129,3 +129,21 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Token data schema"""
     email: Optional[str] = None
+
+
+# Voice Conversion Schemas
+class VoiceConversionRequest(BaseModel):
+    """Voice conversion request schema"""
+    text: str
+    voice_id: int
+
+
+class VoiceConversionResponse(BaseModel):
+    """Voice conversion response schema"""
+    success: bool
+    message: str
+    voice_name: str
+    text: str
+    audio_url: str
+    file_size: int
+    duration_seconds: int

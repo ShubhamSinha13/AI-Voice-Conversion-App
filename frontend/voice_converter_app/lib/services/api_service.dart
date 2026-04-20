@@ -191,6 +191,43 @@ class ApiService {
     }
   }
 
+  // Phase 3: Voice Conversion APIs
+  Future<Map<String, dynamic>> convertVoice({
+    required String text,
+    required int voiceId,
+    required String token,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/voice-conversion/convert',
+        data: {'text': text, 'voice_id': voiceId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> downloadAudio({
+    required String audioUrl,
+    required String savePath,
+    required String token,
+    Function(int, int)? onReceiveProgress,
+  }) async {
+    try {
+      final fullUrl = '$baseUrl$audioUrl';
+      await _dio.download(
+        fullUrl,
+        savePath,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        onReceiveProgress: onReceiveProgress,
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // Error handling
   String _handleError(DioException error) {
     if (error.response != null) {

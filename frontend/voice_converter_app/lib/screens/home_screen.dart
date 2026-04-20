@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/voice_provider.dart';
 import 'voice_input_screen.dart';
 import 'voice_detail_screen.dart';
+import 'voice_conversion_screen.dart';
 import 'settings_screen.dart';
 
 /// Home screen with two tabs: Predefined Voices and My Custom Voices
@@ -129,6 +130,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // Custom Voices Tab
           CustomVoicesTab(),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const VoiceConversionScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.record_voice_over),
+        label: const Text('Convert Voice'),
       ),
     );
   }
