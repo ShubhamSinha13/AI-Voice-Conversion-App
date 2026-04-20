@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../providers/auth_provider.dart';
 import '../providers/voice_provider.dart';
+import '../services/api_service.dart';
 import 'voice_input_screen.dart';
 import 'voice_detail_screen.dart';
 import 'voice_conversion_screen.dart';
@@ -147,11 +151,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 }
 
 /// Predefined Voices Tab
-class PredefinedVoicesTab extends ConsumerWidget {
+class PredefinedVoicesTab extends ConsumerStatefulWidget {
   const PredefinedVoicesTab({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PredefinedVoicesTab> createState() =>
+      _PredefinedVoicesTabState();
+}
+
+class _PredefinedVoicesTabState extends ConsumerState<PredefinedVoicesTab> {
+  late AudioPlayer _audioPlayer;
+  int? _playingVoiceId;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+
+    _audioPlayer.playerStateStream.listen((state) {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playVoicePreview(int voiceId, String voiceName) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // If already playing this voice, stop it
+      if (_playingVoiceId == voiceId) {
+        await _audioPlayer.stop();
+        setState(() {
+          _playingVoiceId = null;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final token = ref.read(authTokenProvider);
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Not authenticated')),
+        );
+        return;
+      }
+
+      // Get temp directory
+      final tempDir = await getTemporaryDirectory();
+      final filePath =
+          '${tempDir.path}/voice_preview_${voiceId}_${DateTime.now().millisecondsSinceEpoch}.mp3';
+
+      // Download preview
+      await ApiService().playVoicePreview(
+        voiceId: voiceId,
+        token: token,
+        savePath: filePath,
+      );
+
+      // Play audio
+      await _audioPlayer.setFilePath(filePath);
+      await _audioPlayer.play();
+
+      setState(() {
+        _playingVoiceId = voiceId;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error playing preview: ${e.toString()}')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final voiceState = ref.watch(voiceProvider);
     final voices = voiceState.predefinedVoices;
 
@@ -181,25 +265,41 @@ class PredefinedVoicesTab extends ConsumerWidget {
       itemCount: voices.length,
       itemBuilder: (context, index) {
         final voice = voices[index];
+        final isPlaying = _playingVoiceId == voice.id;
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8),
           child: ListTile(
-            leading: const Icon(Icons.mic),
+            leading: const Icon(Icons.star, color: Colors.amber),
             title: Text(voice.name),
             subtitle: Text(voice.category ?? 'Voice'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    ref.read(voiceProvider.notifier).selectVoice(voice);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Selected ${voice.name}')),
-                    );
-                  },
-                  child: const Text('Use'),
-                ),
-              ],
+            trailing: SizedBox(
+              width: 180,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Play button
+                  IconButton(
+                    icon: isPlaying && !_isLoading
+                        ? const Icon(Icons.stop, color: Colors.red)
+                        : const Icon(Icons.play_arrow, color: Colors.blue),
+                    onPressed: _isLoading
+                        ? null
+                        : () => _playVoicePreview(voice.id, voice.name),
+                    tooltip: isPlaying ? 'Stop' : 'Listen',
+                  ),
+                  // Use button
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.read(voiceProvider.notifier).selectVoice(voice);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Selected ${voice.name}')),
+                      );
+                    },
+                    child: const Text('Use'),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -209,11 +309,90 @@ class PredefinedVoicesTab extends ConsumerWidget {
 }
 
 /// Custom Voices Tab
-class CustomVoicesTab extends ConsumerWidget {
+class CustomVoicesTab extends ConsumerStatefulWidget {
   const CustomVoicesTab({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CustomVoicesTab> createState() => _CustomVoicesTabState();
+}
+
+class _CustomVoicesTabState extends ConsumerState<CustomVoicesTab> {
+  late AudioPlayer _audioPlayer;
+  int? _playingVoiceId;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+
+    _audioPlayer.playerStateStream.listen((state) {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playVoicePreview(int voiceId, String voiceName) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // If already playing this voice, stop it
+      if (_playingVoiceId == voiceId) {
+        await _audioPlayer.stop();
+        setState(() {
+          _playingVoiceId = null;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final token = ref.read(authTokenProvider);
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Not authenticated')),
+        );
+        return;
+      }
+
+      // Get temp directory
+      final tempDir = await getTemporaryDirectory();
+      final filePath =
+          '${tempDir.path}/voice_preview_${voiceId}_${DateTime.now().millisecondsSinceEpoch}.mp3';
+
+      // Download preview
+      await ApiService().playVoicePreview(
+        voiceId: voiceId,
+        token: token,
+        savePath: filePath,
+      );
+
+      // Play audio
+      await _audioPlayer.setFilePath(filePath);
+      await _audioPlayer.play();
+
+      setState(() {
+        _playingVoiceId = voiceId;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error playing preview: ${e.toString()}')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final customVoices = ref.watch(customVoicesProvider);
 
     return ListView(
@@ -288,25 +467,63 @@ class CustomVoicesTab extends ConsumerWidget {
         else
           ...customVoices.map((voice) {
             final accuracy = voice.accuracyPercentage.toInt();
+            final isPlaying = _playingVoiceId == voice.id;
 
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
                 leading: Icon(
-                  Icons.mic,
+                  Icons.person,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 title: Text(voice.userDefinedName ?? voice.name),
                 subtitle: Text(
                   '$accuracy% • ${voice.sampleCount} sample${voice.sampleCount != 1 ? 's' : ''}',
                 ),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => VoiceDetailScreen(voice: voice),
-                    ),
-                  );
-                },
+                trailing: SizedBox(
+                  width: 160,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Play button (only if voice has samples)
+                      if (voice.sampleCount > 0)
+                        IconButton(
+                          icon: isPlaying && !_isLoading
+                              ? const Icon(Icons.stop, color: Colors.red)
+                              : const Icon(Icons.play_arrow,
+                                  color: Colors.blue),
+                          onPressed: _isLoading
+                              ? null
+                              : () => _playVoicePreview(voice.id, voice.name),
+                          tooltip: isPlaying ? 'Stop' : 'Listen',
+                        )
+                      else
+                        Tooltip(
+                          message: 'Upload samples to listen',
+                          child: IconButton(
+                            icon: const Icon(Icons.play_arrow,
+                                color: Colors.grey),
+                            onPressed: null,
+                          ),
+                        ),
+                      // Details button
+                      SizedBox(
+                        width: 80,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    VoiceDetailScreen(voice: voice),
+                              ),
+                            );
+                          },
+                          child: const Text('Details'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           }).toList(),

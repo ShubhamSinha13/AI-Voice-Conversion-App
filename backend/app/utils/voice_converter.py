@@ -1,87 +1,91 @@
 """
-Voice conversion utility functions
+Voice conversion utility functions using Microsoft Edge TTS
+Generates natural human speech - lightweight, fast, no model downloads
 """
 
 import os
-import wave
-import struct
-import math
 from datetime import datetime
 import logging
+import asyncio
+import edge_tts
 
 logger = logging.getLogger(__name__)
+
+# Microsoft Edge TTS voices - mapped to match predefined voices by gender
+# Voices 1-12 correspond to database voice_id 1-12
+# CORRECT GENDER MAPPING: Male names use male voices, female names use female voices
+# Using verified working Edge TTS voices with necessary repetition for all 12 slots
+EDGE_VOICES = {
+    1: "en-US-GuyNeural",         # Alex - Professional Male
+    2: "en-US-JennyNeural",       # Emma - Friendly Female
+    3: "en-US-RogerNeural",       # James - Deep Male
+    4: "en-US-AvaNeural",         # Sophia - Soft Female
+    5: "en-GB-RyanNeural",        # Marco - Italian Accent Male
+    6: "en-US-AriaNeural",        # Claire - French Accent Female
+    7: "en-US-GuyNeural",         # Raj - Indian Accent Male (reuse GuyNeural)
+    8: "en-US-AriaNeural",        # Yuki - Japanese Accent Female (changed from AmberNeural)
+    9: "en-US-RogerNeural",       # Liam - Irish Male (reuse RogerNeural)
+    10: "en-US-JennyNeural",      # Ava - American Female (reuse JennyNeural)
+    11: "en-GB-RyanNeural",       # Miguel - Spanish Male (reuse RyanNeural)
+    12: "en-US-JennyNeural",      # Luna - Child Voice Female (changed from ZiraNeural)
+}
 
 
 async def convert_text_to_speech(
     text: str,
     voice_id: int,
     voice_name: str,
-    user_id: int
+    user_id: int,
+    is_preview: bool = False
 ) -> str:
     """
-    Convert text to speech using selected voice.
-    
-    For now, this is a mock implementation that generates a simple WAV file.
-    In production, this would integrate with an ML model or TTS service.
+    Convert text to speech using Microsoft Edge TTS.
+    Generates natural human speech with zero setup.
     
     Args:
         text: Text to convert to speech
         voice_id: ID of the voice to use
         voice_name: Name of the voice
         user_id: User ID for file organization
+        is_preview: Whether this is a preview/sample audio
     
     Returns:
-        Path to generated audio file
+        Path to generated audio file (MP3 format)
     """
     try:
         # Create output directory
-        output_dir = os.path.join(
-            "uploads/voice_conversions",
-            str(user_id),
-            str(voice_id)
-        )
+        if is_preview:
+            output_dir = os.path.join(
+                "uploads/voice_previews",
+                str(user_id)
+            )
+        else:
+            output_dir = os.path.join(
+                "uploads/voice_conversions",
+                str(user_id),
+                str(voice_id)
+            )
         
         os.makedirs(output_dir, exist_ok=True)
         
         # Generate filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"conversion_{timestamp}.wav"
+        if is_preview:
+            filename = f"preview_{voice_id}_{timestamp}.mp3"
+        else:
+            filename = f"conversion_{timestamp}.mp3"
         filepath = os.path.join(output_dir, filename)
         
-        # Generate simple WAV audio
-        # For demo: create a tone that varies based on text length
-        sample_rate = 16000
-        duration = max(2, len(text) * 0.05)  # ~50ms per character
-        num_samples = int(sample_rate * duration)
+        # Select voice based on voice_id
+        voice = EDGE_VOICES.get(voice_id, "en-US-AriaNeural")
         
-        # Generate audio data (simple sine wave)
-        audio_data = []
-        frequency = 440 + (voice_id * 50)  # Vary frequency by voice
+        # Generate speech using edge-tts
+        communicate = edge_tts.Communicate(text=text, voice=voice, rate="+0%")
+        await communicate.save(filepath)
         
-        for i in range(num_samples):
-            # Create a simple tone with some variation
-            t = i / sample_rate
-            # Use a mix of frequencies for more natural sound
-            sample = (
-                0.3 * math.sin(2 * math.pi * frequency * t) +
-                0.2 * math.sin(2 * math.pi * (frequency * 1.5) * t) +
-                0.1 * math.sin(2 * math.pi * (frequency * 0.5) * t)
-            )
-            audio_data.append(int(32767 * sample))
-        
-        # Write WAV file
-        with wave.open(filepath, 'w') as wav_file:
-            wav_file.setnchannels(1)  # Mono
-            wav_file.setsampwidth(2)  # 16-bit
-            wav_file.setframerate(sample_rate)
-            
-            # Convert audio data to bytes
-            audio_bytes = b''.join(struct.pack('<h', sample) for sample in audio_data)
-            wav_file.writeframes(audio_bytes)
-        
-        logger.info(f"Generated audio file: {filepath}")
+        logger.info(f"Generated audio file: {filepath} (voice={voice})")
         return filepath
         
     except Exception as e:
-        logger.error(f"Error generating audio: {str(e)}")
-        return None
+        logger.error(f"Error generating audio with Edge TTS: {str(e)}", exc_info=True)
+        raise

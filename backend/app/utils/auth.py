@@ -7,6 +7,7 @@ from typing import Optional
 from jose import JWTError, jwt
 import hashlib
 import secrets
+from fastapi import Header, HTTPException, status, Depends
 from app.config import settings
 
 # For simple password hashing without bcrypt's 72-byte limit
@@ -62,3 +63,58 @@ def decode_token(token: str) -> Optional[str]:
         return email
     except JWTError:
         return None
+
+
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Get current user from Authorization header
+    
+    This dependency extracts the JWT token from the Authorization header,
+    validates it, and returns the User object if valid.
+    
+    Args:
+        authorization: Authorization header in format "Bearer <token>"
+    
+    Returns:
+        User object if valid
+        
+    Raises:
+        HTTPException: If token is invalid or user not found
+    """
+    from app.database import SessionLocal
+    from app.models import User
+    
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    # Extract token from "Bearer <token>"
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise ValueError()
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header"
+        )
+    
+    email = decode_token(token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+        return user
+    finally:
+        db.close()

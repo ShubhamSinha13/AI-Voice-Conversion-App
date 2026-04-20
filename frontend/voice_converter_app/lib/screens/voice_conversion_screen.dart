@@ -38,19 +38,24 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
 
     // Listen to playback position for progress bar
     _audioPlayer.positionStream.listen((position) {
-      setState(() {
-        _playbackProgress = _audioPlayer.duration != null
-            ? (position.inMilliseconds / _audioPlayer.duration!.inMilliseconds)
-                .clamp(0.0, 1.0)
-            : 0.0;
-      });
+      if (mounted) {
+        setState(() {
+          _playbackProgress = _audioPlayer.duration != null
+              ? (position.inMilliseconds /
+                      _audioPlayer.duration!.inMilliseconds)
+                  .clamp(0.0, 1.0)
+              : 0.0;
+        });
+      }
     });
 
     // Listen to player state changes
     _audioPlayer.playerStateStream.listen((state) {
-      setState(() {
-        _isPlaying = state.playing;
-      });
+      if (mounted) {
+        setState(() {
+          _isPlaying = state.playing;
+        });
+      }
     });
   }
 
@@ -64,36 +69,44 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
   Future<void> _convertVoice() async {
     // Validate input
     if (_textController.text.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please enter text to convert';
-        _successMessage = '';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Please enter text to convert';
+          _successMessage = '';
+        });
+      }
       return;
     }
 
     if (_selectedVoiceId == null) {
-      setState(() {
-        _errorMessage = 'Please select a voice';
-        _successMessage = '';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Please select a voice';
+          _successMessage = '';
+        });
+      }
       return;
     }
 
-    setState(() {
-      _isConverting = true;
-      _errorMessage = '';
-      _successMessage = '';
-    });
+    if (mounted) {
+      setState(() {
+        _isConverting = true;
+        _errorMessage = '';
+        _successMessage = '';
+      });
+    }
 
     try {
       // Get token from auth provider
       final token = ref.read(authTokenProvider);
 
       if (token == null) {
-        setState(() {
-          _errorMessage = 'Not authenticated. Please login again.';
-          _isConverting = false;
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Not authenticated. Please login again.';
+            _isConverting = false;
+          });
+        }
         return;
       }
 
@@ -128,26 +141,32 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
           token: token,
         );
 
-        setState(() {
-          _currentAudioPath = savePath;
-          _successMessage =
-              'Voice conversion successful! Duration: ${result['duration_seconds']}s';
-          _isConverting = false;
-        });
+        if (mounted) {
+          setState(() {
+            _currentAudioPath = savePath;
+            _successMessage =
+                'Voice conversion successful! Duration: ${result['duration_seconds']}s';
+            _isConverting = false;
+          });
+        }
 
         // Auto-play the audio
         await _playAudio(savePath);
       } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = result['message'] ?? 'Conversion failed';
+            _isConverting = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _errorMessage = result['message'] ?? 'Conversion failed';
+          _errorMessage = 'Error: ${e.toString()}';
           _isConverting = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error: ${e.toString()}';
-        _isConverting = false;
-      });
     }
   }
 
@@ -156,9 +175,11 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
       await _audioPlayer.setFilePath(path);
       await _audioPlayer.play();
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error playing audio: ${e.toString()}';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error playing audio: ${e.toString()}';
+        });
+      }
     }
   }
 

@@ -228,6 +228,24 @@ class ApiService {
     }
   }
 
+  // Voice Preview APIs
+  Future<void> playVoicePreview({
+    required int voiceId,
+    required String token,
+    required String savePath,
+  }) async {
+    try {
+      final fullUrl = '$baseUrl/api/voices/$voiceId/preview';
+      await _dio.download(
+        fullUrl,
+        savePath,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // Error handling
   String _handleError(DioException error) {
     if (error.response != null) {
