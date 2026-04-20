@@ -3,7 +3,17 @@ import 'dart:io';
 
 /// API Service for communicating with backend
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000';
+  // Android emulator uses 10.0.2.2 to refer to host machine
+  // Other platforms use localhost
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    } else if (Platform.isIOS) {
+      return 'http://localhost:8000';
+    } else {
+      return 'http://localhost:8000';
+    }
+  }
 
   late Dio _dio;
 
