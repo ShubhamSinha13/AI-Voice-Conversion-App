@@ -34,9 +34,11 @@ class Voice {
       userDefinedName: json['user_defined_name'] as String?,
       sampleCount: json['sample_count'] as int? ?? 0,
       accuracyPercentage:
-          (json['accuracy_percentage'] as num?)?.toDouble() ?? 0.0,
-      isPredefined: json['is_predefined'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
+          (json['accuracy_percentage'] as num?)?.toDouble() ?? 88.0,
+      isPredefined: json['is_predefined'] as bool? ?? true,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 
