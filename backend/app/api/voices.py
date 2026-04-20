@@ -2,9 +2,9 @@
 API endpoints for voice operations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Header
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database import get_db
 from app.models import User, Voice
 from app.schemas import VoiceCreate, VoiceResponse, VoiceDetailResponse, AccuracyResponse
@@ -16,12 +16,23 @@ router = APIRouter(prefix="/api/voices", tags=["voices"])
 logger = logging.getLogger(__name__)
 
 
-def get_current_user(token: str = None, db: Session = Depends(get_db)) -> User:
-    """Get current user from token"""
-    if not token:
+def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> User:
+    """Get current user from Authorization header"""
+    if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
+        )
+    
+    # Extract token from "Bearer <token>"
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise ValueError()
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header"
         )
     
     email = decode_token(token)
@@ -49,25 +60,22 @@ def get_predefined_voices(db: Session = Depends(get_db)):
 
 
 @router.get("/my-voices", response_model=List[VoiceResponse])
-def get_my_voices(token: str = None, db: Session = Depends(get_db)):
+def get_my_voices(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get user's custom voices"""
-    user = get_current_user(token, db)
-    voices = db.query(Voice).filter(Voice.user_id == user.id).all()
+    voices = db.query(Voice).filter(Voice.user_id == current_user.id).all()
     return voices
 
 
 @router.post("/create", response_model=VoiceDetailResponse)
 def create_voice(
     voice_data: VoiceCreate,
-    token: str = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create new custom voice"""
-    user = get_current_user(token, db)
-    
     # Create voice entry
     db_voice = Voice(
-        user_id=user.id,
+        user_id=current_user.id,
         name=voice_data.name,
         user_defined_name=voice_data.user_defined_name,
         type="custom",
@@ -80,7 +88,7 @@ def create_voice(
     db.commit()
     db.refresh(db_voice)
     
-    logger.info(f"Voice created: {db_voice.id} for user {user.id}")
+    logger.info(f"Voice created: {db_voice.id} for user {current_user.id}")
     return db_voice
 
 
@@ -88,16 +96,14 @@ def create_voice(
 def add_voice_sample(
     voice_id: int,
     file: UploadFile = File(...),
-    token: str = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Add voice sample to existing voice"""
-    user = get_current_user(token, db)
-    
     # Get voice
     voice = db.query(Voice).filter(
         Voice.id == voice_id,
-        Voice.user_id == user.id
+        Voice.user_id == current_user.id
     ).first()
     
     if not voice:
@@ -130,12 +136,10 @@ def add_voice_sample(
 @router.get("/{voice_id}", response_model=VoiceDetailResponse)
 def get_voice(
     voice_id: int,
-    token: str = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get voice details"""
-    user = get_current_user(token, db)
-    
     voice = db.query(Voice).filter(Voice.id == voice_id).first()
     if not voice:
         raise HTTPException(
@@ -144,7 +148,7 @@ def get_voice(
         )
     
     # Check ownership for custom voices
-    if not voice.is_predefined and voice.user_id != user.id:
+    if not voice.is_predefined and voice.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized"

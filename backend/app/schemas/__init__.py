@@ -48,6 +48,16 @@ class VoiceResponse(BaseModel):
     predefined_name: Optional[str]
     user_defined_name: Optional[str]
     sample_count: int
+
+
+# Response Schemas
+class MessageResponse(BaseModel):
+    """Generic message response schema"""
+    message: str
+    detail: Optional[dict] = None
+    
+    class Config:
+        from_attributes = True
     accuracy_percentage: float
     is_predefined: bool
     created_at: datetime

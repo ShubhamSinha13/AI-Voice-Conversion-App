@@ -19,7 +19,7 @@ class AudioCaptureService : Service() {
         private const val SAMPLE_RATE = 16000
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        private const val MIN_BUFFER_SIZE = AudioRecord.getMinBufferSize(
+        private val MIN_BUFFER_SIZE = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
             CHANNEL_CONFIG,
             AUDIO_FORMAT

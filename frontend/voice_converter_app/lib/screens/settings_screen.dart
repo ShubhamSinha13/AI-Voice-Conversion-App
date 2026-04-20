@@ -91,7 +91,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildSectionHeader(context, 'Voice Settings'),
             _buildSettingsTile(
               context,
-              icon: Icons.target_outlined,
+              icon: Icons.sports_score,
               title: 'Target Accuracy',
               subtitle: 'Aim for 99%+ accuracy',
               onTap: () {},

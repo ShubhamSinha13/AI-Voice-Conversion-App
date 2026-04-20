@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice.dart';
-import '../providers/voice_provider.dart';
 import 'voice_input_screen.dart';
 
 /// Voice Detail Screen - View and manage individual voice
@@ -135,8 +134,9 @@ class _VoiceDetailScreenState extends ConsumerState<VoiceDetailScreen> {
                       child: LinearProgressIndicator(
                         value: accuracy / 100,
                         minHeight: 12,
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surfaceVariant,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation(
                           _getAccuracyColor(accuracy),
                         ),
@@ -162,7 +162,7 @@ class _VoiceDetailScreenState extends ConsumerState<VoiceDetailScreen> {
                   Expanded(
                     child: _buildInfoCard(
                       context,
-                      icon: Icons.target,
+                      icon: Icons.sports_score,
                       label: 'Quality',
                       value: _getQualityLabel(accuracy),
                     ),
@@ -373,7 +373,7 @@ class _VoiceDetailScreenState extends ConsumerState<VoiceDetailScreen> {
                   decoration: BoxDecoration(
                     color: isReached
                         ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.surfaceVariant,
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
                   child: Center(

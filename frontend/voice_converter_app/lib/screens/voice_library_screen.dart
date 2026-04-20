@@ -142,7 +142,7 @@ class _VoiceLibraryScreenState extends ConsumerState<VoiceLibraryScreen> {
                                   minHeight: 12,
                                   backgroundColor: Theme.of(context)
                                       .colorScheme
-                                      .surfaceVariant,
+                                      .surfaceContainerHighest,
                                   valueColor: AlwaysStoppedAnimation(
                                     _getAccuracyColor(accuracy),
                                   ),

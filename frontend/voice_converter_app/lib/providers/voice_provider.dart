@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice.dart';
 import '../services/api_service.dart';
-import 'auth_provider.dart';
 
 /// Voice state
 class VoiceState {
@@ -47,7 +46,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     try {
       state = state.copyWith(isLoading: true);
       final voices = await apiService.getPredefinedVoices();
-      final voiceList = (voices as List)
+      final voiceList = (voices)
           .map((v) => Voice.fromJson(v as Map<String, dynamic>))
           .toList();
       state = state.copyWith(
@@ -67,7 +66,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     try {
       state = state.copyWith(isLoading: true);
       final voices = await apiService.getMyVoices(token: token);
-      final voiceList = (voices as List)
+      final voiceList = (voices)
           .map((v) => Voice.fromJson(v as Map<String, dynamic>))
           .toList();
       state = state.copyWith(
@@ -88,7 +87,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   /// Add new custom voice
-  Future<void> createVoice({
+  Future<Map<String, dynamic>> createVoice({
     required String name,
     required String userDefinedName,
     required String token,
@@ -105,11 +104,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         customVoices: [...state.customVoices, newVoice],
         isLoading: false,
       );
+      return response;
     } catch (e) {
       state = state.copyWith(
         error: e.toString(),
         isLoading: false,
       );
+      rethrow;
     }
   }
 

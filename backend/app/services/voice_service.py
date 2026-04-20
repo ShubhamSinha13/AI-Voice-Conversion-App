@@ -4,7 +4,6 @@ Voice conversion and processing services
 
 from datetime import datetime
 from typing import Optional, Tuple
-import numpy as np
 from pathlib import Path
 import logging
 
@@ -18,7 +17,7 @@ class VoiceConversionService:
         self.model_path = Path("./ml_models")
         self.model_path.mkdir(exist_ok=True)
     
-    def extract_speaker_embedding(self, audio_path: str) -> np.ndarray:
+    def extract_speaker_embedding(self, audio_path: str) -> bytes:
         """
         Extract speaker embedding from audio file using HuBERT
         
@@ -26,16 +25,15 @@ class VoiceConversionService:
             audio_path: Path to audio file
             
         Returns:
-            Speaker embedding as numpy array
+            Speaker embedding as bytes (placeholder for Phase 2)
         """
         try:
             # Placeholder for HuBERT embedding extraction
             # In production: use transformers HuBERT model
             logger.info(f"Extracting speaker embedding from {audio_path}")
             
-            # Dummy embedding (will be replaced with actual HuBERT)
-            embedding = np.random.randn(256)
-            embedding = embedding / np.linalg.norm(embedding)
+            # Dummy embedding (will be replaced with actual HuBERT in Phase 2)
+            embedding = b'\x00' * 256  # 256-byte placeholder
             
             return embedding
             
@@ -95,12 +93,12 @@ class VoicePersistenceService:
         return f"models/user_{user_id}/voice_{voice_id}/model.pth"
     
     @staticmethod
-    def serialize_embedding(embedding: np.ndarray) -> str:
-        """Serialize numpy embedding to string for database storage"""
-        # In production: use proper serialization (pickle, msgpack)
-        return embedding.tobytes().hex()
+    def serialize_embedding(embedding: bytes) -> str:
+        """Serialize embedding bytes to string for database storage"""
+        # Store as hex string
+        return embedding.hex()
     
     @staticmethod
-    def deserialize_embedding(embedding_str: str) -> np.ndarray:
-        """Deserialize embedding string back to numpy array"""
-        return np.frombuffer(bytes.fromhex(embedding_str), dtype=np.float32)
+    def deserialize_embedding(embedding_str: str) -> bytes:
+        """Deserialize embedding string back to bytes"""
+        return bytes.fromhex(embedding_str)

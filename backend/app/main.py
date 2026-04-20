@@ -9,6 +9,8 @@ from app.database import engine, Base, get_db
 from app.models import User, Voice
 from app.schemas import UserCreate, UserLogin, UserResponse, Token
 from app.utils.auth import hash_password, verify_password, create_access_token
+from app.api.voices import router as voices_router
+from app.api.voice_samples import router as voice_samples_router
 from datetime import timedelta
 import logging
 
@@ -31,6 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(voices_router)
+app.include_router(voice_samples_router)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,34 +50,43 @@ def health_check():
 
 
 # User authentication endpoints
-@app.post("/auth/register", response_model=UserResponse)
+@app.post("/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
-    # Check if user already exists
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+    try:
+        # Check if user already exists
+        db_user = db.query(User).filter(User.email == user.email).first()
+        if db_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Create new user
+        db_user = User(
+            email=user.email,
+            username=user.username,
+            password_hash=hash_password(user.password)
         )
-    
-    # Create new user
-    db_user = User(
-        email=user.email,
-        username=user.username,
-        password_hash=hash_password(user.password)
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    logger.info(f"New user registered: {user.email}")
-    return db_user
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        logger.info(f"New user registered: {user.email}")
+        return {
+            "id": db_user.id,
+            "email": db_user.email,
+            "username": db_user.username,
+            "created_at": db_user.created_at.isoformat() if db_user.created_at else None
+        }
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/auth/login", response_model=Token)
+@app.post("/auth/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    """Login user and return access token"""
+    """Login user and return access token with user info"""
     # Find user by email
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user:
@@ -98,7 +113,10 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": 30 * 60  # seconds
+        "expires_in": 30 * 60,  # seconds
+        "user_id": db_user.id,
+        "email": db_user.email,
+        "username": db_user.username,
     }
 
 

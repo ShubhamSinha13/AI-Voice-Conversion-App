@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/voice.dart';
 import '../providers/auth_provider.dart';
 import '../providers/voice_provider.dart';
 import 'voice_input_screen.dart';
@@ -23,6 +22,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Load voices on init
+    Future.microtask(() {
+      ref.read(voiceProvider.notifier).loadPredefinedVoices();
+      final token = ref.read(authTokenProvider);
+      if (token != null) {
+        ref.read(voiceProvider.notifier).loadCustomVoices(token);
+      }
+    });
   }
 
   @override
@@ -76,7 +84,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ],
                   ),
                 ),
-                const PopupMenuDivider(),
                 PopupMenuItem(
                   onTap: () {
                     ref.read(authProvider.notifier).logout();
@@ -128,106 +135,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 }
 
 /// Predefined Voices Tab
-class PredefinedVoicesTab extends StatelessWidget {
+class PredefinedVoicesTab extends ConsumerWidget {
   const PredefinedVoicesTab({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Female Voices Section
-          _buildVoiceSection(
-            context,
-            title: 'Female Voices',
-            voices: [
-              ('Female Voice 1', 'Soft tone', Icons.person),
-              ('Female Voice 2', 'Strong tone', Icons.person),
-              ('Female Voice 3', 'Young tone', Icons.person),
-              ('Female Voice 4', 'Energetic tone', Icons.person),
-            ],
-          ),
-          const SizedBox(height: 24),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final voiceState = ref.watch(voiceProvider);
+    final voices = voiceState.predefinedVoices;
 
-          // Men Voices Section
-          _buildVoiceSection(
-            context,
-            title: 'Men Voices',
-            voices: [
-              ('Men Voice 1', 'Deep tone', Icons.person),
-              ('Men Voice 2', 'Smooth tone', Icons.person),
-              ('Men Voice 3', 'Young tone', Icons.person),
-              ('Men Voice 4', 'Energetic tone', Icons.person),
-            ],
-          ),
-          const SizedBox(height: 24),
+    if (voiceState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-          // Special Voices Section
-          _buildVoiceSection(
-            context,
-            title: 'Special Voices',
-            voices: [
-              ('🤖 Robotic', 'Synthetic sound', Icons.settings),
-              ('🤫 Whisper', 'Quiet, breathy', Icons.volume_mute),
-              ('🎭 Cartoon', 'Playful, exaggerated', Icons.theaters),
-              ('👴 Elder', 'Aged voice quality', Icons.person),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVoiceSection(
-    BuildContext context, {
-    required String title,
-    required List<(String, String, IconData)> voices,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: voices.length,
-          itemBuilder: (context, index) {
-            final (voiceName, description, icon) = voices[index];
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                leading: Icon(icon),
-                title: Text(voiceName),
-                subtitle: Text(description),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.play_arrow),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Playing $voiceName preview')),
-                        );
-                      },
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Using $voiceName')),
-                        );
-                      },
-                      child: const Text('Use Now'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    if (voices.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.mic, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              'No predefined voices available',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ],
         ),
-      ],
+      );
+    }
+
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      itemCount: voices.length,
+      itemBuilder: (context, index) {
+        final voice = voices[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListTile(
+            leading: const Icon(Icons.mic),
+            title: Text(voice.name),
+            subtitle: Text(voice.category ?? 'Voice'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    ref.read(voiceProvider.notifier).selectVoice(voice);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Selected ${voice.name}')),
+                    );
+                  },
+                  child: const Text('Use'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -240,109 +204,101 @@ class CustomVoicesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final customVoices = ref.watch(customVoicesProvider);
 
-    return SingleChildScrollView(
+    return ListView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Create Voice Section
-          Text(
-            'Create Your Own Voice',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
+      children: [
+        // Create Voice Section
+        Text(
+          'Create Your Own Voice',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
 
-          // Create Voice Button
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const VoiceInputScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create New Voice'),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // My Custom Voices Section
-          Text(
-            'My Custom Voices',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-
-          // Custom voices list
-          if (customVoices.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline,
+        // Create Voice Button
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const VoiceInputScreen(),
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.mic_none,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No custom voices yet',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Create your first voice to get started',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: customVoices.length,
-              itemBuilder: (context, index) {
-                final voice = customVoices[index];
-                final accuracy = voice.accuracyPercentage.toInt();
+              );
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Create New Voice'),
+          ),
+        ),
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.mic,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: Text(voice.userDefinedName ?? voice.name),
-                    subtitle: Text(
-                      '$accuracy% • ${voice.sampleCount} sample${voice.sampleCount != 1 ? 's' : ''}',
-                    ),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => VoiceDetailScreen(voice: voice),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+        const SizedBox(height: 32),
+
+        // My Custom Voices Section
+        Text(
+          'My Custom Voices',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+
+        // Custom voices list
+        if (customVoices.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              borderRadius: BorderRadius.circular(8),
             ),
-        ],
-      ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.mic_none,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No custom voices yet',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first voice to get started',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...customVoices.map((voice) {
+            final accuracy = voice.accuracyPercentage.toInt();
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: ListTile(
+                leading: Icon(
+                  Icons.mic,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                title: Text(voice.userDefinedName ?? voice.name),
+                subtitle: Text(
+                  '$accuracy% • ${voice.sampleCount} sample${voice.sampleCount != 1 ? 's' : ''}',
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => VoiceDetailScreen(voice: voice),
+                    ),
+                  );
+                },
+              ),
+            );
+          }).toList(),
+      ],
     );
   }
 }

@@ -15,6 +15,7 @@ dependencies:
   # UI & State Management
   provider: ^6.0.0
   riverpod: ^2.4.0
+  flutter_riverpod: ^2.4.0
   get: ^4.6.0
   
   # HTTP & Networking
@@ -22,10 +23,9 @@ dependencies:
   http: ^1.1.0
   
   # Audio & Media
-  record: ^4.4.0
+  record: ^6.0.0
   audio_session: ^0.1.16
   flutter_sound: ^9.7.0
-  file_picker: ^5.4.0
   
   # Database & Storage
   hive: ^2.2.0
@@ -66,12 +66,3 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/sounds/
-  
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Roboto-Italic.ttf
-          style: italic
