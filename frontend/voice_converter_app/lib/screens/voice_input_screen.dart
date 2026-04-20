@@ -18,7 +18,7 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
     with WidgetsBindingObserver {
   final _voiceNameController = TextEditingController();
   final _record = AudioRecorder();
-  
+
   bool _isRecording = false;
   Duration _recordDuration = Duration.zero;
   Timer? _timer;
@@ -111,10 +111,10 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
 
     try {
       await ref.read(voiceProvider.notifier).createVoice(
-        name: _voiceNameController.text,
-        userDefinedName: _voiceNameController.text,
-        token: token,
-      );
+            name: _voiceNameController.text,
+            userDefinedName: _voiceNameController.text,
+            token: token,
+          );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -229,11 +229,13 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
                           const SizedBox(width: 8),
                           Text(
                             'Recording...',
-                            style:
-                                Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ],
                       )
@@ -293,9 +295,12 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
                       width: double.infinity,
                       height: 56,
                       child: FilledButton.icon(
-                        onPressed: _isRecording ? _stopRecording : _startRecording,
+                        onPressed:
+                            _isRecording ? _stopRecording : _startRecording,
                         icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                        label: Text(_isRecording ? 'Stop Recording' : 'Start Recording'),
+                        label: Text(_isRecording
+                            ? 'Stop Recording'
+                            : 'Start Recording'),
                       ),
                     ),
                   ],
@@ -375,15 +380,11 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
-          color: isCurrentLevel
-              ? color
-              : Theme.of(context).colorScheme.outline,
+          color: isCurrentLevel ? color : Theme.of(context).colorScheme.outline,
           width: isCurrentLevel ? 2 : 1,
         ),
         borderRadius: BorderRadius.circular(12),
-        color: isCurrentLevel
-            ? color.withOpacity(0.1)
-            : Colors.transparent,
+        color: isCurrentLevel ? color.withOpacity(0.1) : Colors.transparent,
       ),
       padding: const EdgeInsets.all(16),
       child: Row(

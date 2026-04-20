@@ -96,7 +96,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   child: CircleAvatar(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     child: Text(
-                      currentUser?.username.substring(0, 1).toUpperCase() ?? 'U',
+                      currentUser?.username.substring(0, 1).toUpperCase() ??
+                          'U',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -238,7 +239,7 @@ class CustomVoicesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customVoices = ref.watch(customVoicesProvider);
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(

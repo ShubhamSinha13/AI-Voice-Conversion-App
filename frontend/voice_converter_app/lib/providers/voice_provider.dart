@@ -126,13 +126,14 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         filePath: filePath,
         token: token,
       );
-      
+
       // Update custom voices with new accuracy
       final updatedVoices = state.customVoices.map((v) {
         if (v.id == voiceId) {
           return v.copyWith(
             sampleCount: response['sample_count'] ?? v.sampleCount,
-            accuracyPercentage: response['accuracy_percentage'] ?? v.accuracyPercentage,
+            accuracyPercentage:
+                response['accuracy_percentage'] ?? v.accuracyPercentage,
           );
         }
         return v;

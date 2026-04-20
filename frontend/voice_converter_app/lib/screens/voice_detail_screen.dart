@@ -119,11 +119,13 @@ class _VoiceDetailScreenState extends ConsumerState<VoiceDetailScreen> {
                         ),
                         Text(
                           '$accuracy%',
-                          style:
-                              Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: _getAccuracyColor(accuracy),
-                                  ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: _getAccuracyColor(accuracy),
+                              ),
                         ),
                       ],
                     ),
@@ -387,10 +389,9 @@ class _VoiceDetailScreenState extends ConsumerState<VoiceDetailScreen> {
                     children: [
                       Text(
                         '$sampleCount Sample${sampleCount > 1 ? 's' : ''}',
-                        style:
-                            Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       Text(
                         '$accuracy% - $label',
@@ -423,12 +424,9 @@ class _VoiceDetailScreenState extends ConsumerState<VoiceDetailScreen> {
 
   String _getImprovement(int samples) {
     if (samples == 0) return 'Add your first sample to get started!';
-    if (samples == 1)
-      return 'Add 1 more sample to improve accuracy to 90%';
-    if (samples == 2)
-      return 'Add 1 more sample to improve accuracy to 96%';
-    if (samples == 3)
-      return 'Add more samples to reach 99%+ accuracy';
+    if (samples == 1) return 'Add 1 more sample to improve accuracy to 90%';
+    if (samples == 2) return 'Add 1 more sample to improve accuracy to 96%';
+    if (samples == 3) return 'Add more samples to reach 99%+ accuracy';
     return 'Excellent! Your voice is nearly perfect.';
   }
 

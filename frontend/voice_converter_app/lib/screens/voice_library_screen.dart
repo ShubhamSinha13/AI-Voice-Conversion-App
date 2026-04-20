@@ -8,8 +8,7 @@ class VoiceLibraryScreen extends ConsumerStatefulWidget {
   const VoiceLibraryScreen({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<VoiceLibraryScreen> createState() =>
-      _VoiceLibraryScreenState();
+  ConsumerState<VoiceLibraryScreen> createState() => _VoiceLibraryScreenState();
 }
 
 class _VoiceLibraryScreenState extends ConsumerState<VoiceLibraryScreen> {
@@ -161,9 +160,8 @@ class _VoiceLibraryScreenState extends ConsumerState<VoiceLibraryScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .secondaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -214,8 +212,7 @@ class _VoiceLibraryScreenState extends ConsumerState<VoiceLibraryScreen> {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    const VoiceInputScreen(),
+                                builder: (context) => const VoiceInputScreen(),
                               ),
                             );
                           },
