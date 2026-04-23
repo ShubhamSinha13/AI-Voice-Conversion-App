@@ -100,7 +100,7 @@ async def upload_voice_sample(
             voice_id=voice_id,
             call_type="sample_upload",
             duration=len(contents) / 48000,  # Rough estimate (48kHz)
-            accuracy=0.0,  # Will be calculated later
+            voice_accuracy=0.0,  # Will be calculated later
         )
         db.add(call_session)
         db.commit()
@@ -206,7 +206,7 @@ async def get_voice_progress(
         ).all()
         
         sample_count = len(sessions)
-        avg_accuracy = sum(s.accuracy for s in sessions) / len(sessions) if sessions else 0.0
+        avg_accuracy = sum(s.voice_accuracy for s in sessions) / len(sessions) if sessions else 0.0
         
         # Generate recommendations
         recommendations = []

@@ -22,6 +22,7 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
   late ApiService _apiService;
 
   int? _selectedVoiceId;
+  String _selectedQuality = 'basic'; // basic, ml, rvc
   bool _isConverting = false;
   bool _isPlaying = false;
   String? _currentAudioPath;
@@ -33,6 +34,9 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
   void initState() {
     super.initState();
     _textController = TextEditingController();
+    _textController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _audioPlayer = AudioPlayer();
     _apiService = ApiService();
 
@@ -220,6 +224,67 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
     }).toList();
   }
 
+  Widget _buildQualityOption({
+    required String value,
+    required String label,
+    required String description,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedQuality = value;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _selectedQuality == value ? Colors.blue : Colors.grey[300]!,
+            width: _selectedQuality == value ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          color:
+              _selectedQuality == value ? Colors.blue[50] : Colors.transparent,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _selectedQuality == value
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              color: _selectedQuality == value
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final voiceState = ref.watch(voiceProvider);
@@ -238,31 +303,35 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Text Input Section
-            const SizedBox(height: 16),
-            const Text(
-              'Enter Text to Convert',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withValues(alpha: 0.35),
+              ),
+              child: Text(
+                'Create expressive speech with your selected voice and instantly preview the result.',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 18),
+            Text(
+              'Enter Text to Convert',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _textController,
-              maxLines: 5,
-              decoration: InputDecoration(
+              maxLines: 4,
+              decoration: const InputDecoration(
                 hintText: 'Type the text you want to convert to speech...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: Colors.blue,
-                    width: 2,
-                  ),
-                ),
+                alignLabelWithHint: true,
               ),
             ),
             const SizedBox(height: 16),
@@ -276,80 +345,105 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
 
             // Voice Selection Section
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Select Voice',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              initialValue: _selectedVoiceId,
+              hint: const Text('Choose a voice...'),
+              items: _buildVoiceDropdownItems(allVoices),
+              onChanged: (value) {
+                setState(() {
+                  _selectedVoiceId = value;
+                });
+              },
+            ),
+
+            // Conversion Quality Selection
+            const SizedBox(height: 24),
+            Text(
+              'Conversion Quality',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 8),
             Container(
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey[300]!),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: DropdownButton<int>(
-                isExpanded: true,
-                value: _selectedVoiceId,
-                hint: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: const Text('Choose a voice...'),
-                ),
-                items: _buildVoiceDropdownItems(allVoices),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedVoiceId = value;
-                  });
-                },
+              child: Column(
+                children: [
+                  _buildQualityOption(
+                    value: 'basic',
+                    label: 'Basic',
+                    description: 'Fast • Good quality • Pitch & Tempo only',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildQualityOption(
+                    value: 'ml',
+                    label: 'ML-Enhanced (HuBERT)',
+                    description:
+                        'Medium speed • Excellent quality • ML-powered',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildQualityOption(
+                    value: 'rvc',
+                    label: 'Advanced RVC',
+                    description:
+                        'Slower • Premium quality • Best for high-quality results',
+                  ),
+                ],
               ),
             ),
 
             // Error/Success Messages
             const SizedBox(height: 16),
-            if (_errorMessage.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  border: Border.all(color: Colors.red[200]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error, color: Colors.red[700], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(color: Colors.red[700]),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _errorMessage.isNotEmpty
+                  ? Container(
+                      key: const ValueKey('error'),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .errorContainer
+                            .withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            if (_successMessage.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  border: Border.all(color: Colors.green[200]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle,
-                        color: Colors.green[700], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _successMessage,
-                        style: TextStyle(color: Colors.green[700]),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error, color: Theme.of(context).colorScheme.error, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(_errorMessage)),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    )
+                  : _successMessage.isNotEmpty
+                      ? Container(
+                          key: const ValueKey('success'),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(_successMessage)),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('empty')),
+            ),
 
             // Convert Button
             const SizedBox(height: 24),
@@ -359,9 +453,9 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
               child: ElevatedButton(
                 onPressed: _isConverting ? null : _convertVoice,
                 child: _isConverting
-                    ? Row(
+                    ? const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           SizedBox(
                             height: 20,
                             width: 20,
@@ -390,20 +484,21 @@ class _VoiceConversionScreenState extends ConsumerState<VoiceConversionScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
                 child: Column(
                   children: [
                     // Progress bar
                     SliderTheme(
-                      data: SliderThemeData(
+                      data: const SliderThemeData(
                         trackHeight: 6,
-                        thumbShape: const RoundSliderThumbShape(
+                        thumbShape: RoundSliderThumbShape(
                           enabledThumbRadius: 8,
                         ),
                       ),

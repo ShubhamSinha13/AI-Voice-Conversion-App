@@ -4,95 +4,48 @@ Voice conversion service for real-time voice transformation
 import numpy as np
 import logging
 from typing import Tuple, Optional
-from .voice_conversion_models import hubert_extractor, rvc_converter, hifigan_vocoder
+import librosa
+import soundfile as sf
+import io
+from pathlib import Path
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
-class VoiceConversionService:
-    """Service for converting voice from one speaker to another"""
-    
-    @staticmethod
-    def extract_speaker_embedding(audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
-        """
-        Extract speaker embedding from audio
-        
-        Args:
-            audio: Audio samples
-            sample_rate: Sample rate in Hz
-            
-        Returns:
-            Speaker embedding (512-dim vector)
-        """
-        try:
-            embedding = hubert_extractor.extract_embedding(audio, sample_rate)
-            logger.info(f"Extracted embedding shape: {embedding.shape}")
-            return embedding
-        except Exception as e:
-            logger.error(f"Error extracting embedding: {e}")
-            return np.random.randn(512).astype(np.float32)
-    
-    @staticmethod
-    def convert_voice(
-        audio: np.ndarray,
-        source_embedding: np.ndarray,
-        target_embedding: np.ndarray,
-        sample_rate: int = 16000,
-        f0_shift: int = 0
-    ) -> np.ndarray:
-        """
-        Convert voice from source to target speaker
-        
-        Args:
-            audio: Input audio
-            source_embedding: Source speaker embedding
-            target_embedding: Target speaker embedding
-            sample_rate: Sample rate in Hz
-            f0_shift: Pitch shift in semitones
-            
-        Returns:
-            Converted audio
-        """
-        try:
-            converted = rvc_converter.convert_voice(
-                audio,
-                source_embedding,
-                target_embedding,
-                sample_rate,
-                f0_shift
-            )
-            logger.info(f"Voice conversion completed: {converted.shape}")
-            return converted
-        except Exception as e:
-            logger.error(f"Error converting voice: {e}")
-            return audio
-    
-    @staticmethod
-    def synthesize_audio(
-        acoustic_features: np.ndarray,
-        sample_rate: int = 22050
-    ) -> np.ndarray:
-        """
-        Synthesize audio from acoustic features using HiFi-GAN
-        
-        Args:
-            acoustic_features: Mel-spectrogram or acoustic features
-            sample_rate: Output sample rate
-            
-        Returns:
-            Synthesized audio
-        """
-        try:
-            audio = hifigan_vocoder.synthesize(acoustic_features, sample_rate)
-            logger.info(f"Audio synthesis completed: {audio.shape}")
-            return audio
-        except Exception as e:
-            logger.error(f"Error synthesizing audio: {e}")
-            return np.zeros(22050).astype(np.float32)
-
-
 class AudioProcessingService:
-    """Audio preprocessing and postprocessing"""
+    """Service for audio processing and normalization"""
+    
+    @staticmethod
+    def load_audio(file_path: str, sr: int = 16000) -> Tuple[np.ndarray, int]:
+        """
+        Load audio file
+        
+        Args:
+            file_path: Path to audio file
+            sr: Target sample rate
+            
+        Returns:
+            Tuple of (audio_data, sample_rate)
+        """
+        try:
+            audio, sr = librosa.load(file_path, sr=sr, mono=True)
+            logger.info(f"Loaded audio: {len(audio)} samples at {sr}Hz")
+            return audio, sr
+        except Exception as e:
+            logger.error(f"Error loading audio: {e}")
+            raise
+    
+    @staticmethod
+    def load_audio_from_bytes(audio_bytes: bytes, sr: int = 16000) -> Tuple[np.ndarray, int]:
+        """Load audio from bytes"""
+        try:
+            audio, sr = librosa.load(io.BytesIO(audio_bytes), sr=sr, mono=True)
+            logger.info(f"Loaded audio from bytes: {len(audio)} samples at {sr}Hz")
+            return audio, sr
+        except Exception as e:
+            logger.error(f"Error loading audio from bytes: {e}")
+            raise
     
     @staticmethod
     def normalize_audio(audio: np.ndarray, target_db: float = -20.0) -> np.ndarray:
@@ -106,62 +59,62 @@ class AudioProcessingService:
         Returns:
             Normalized audio
         """
-        # Calculate RMS
-        rms = np.sqrt(np.mean(audio ** 2))
+        # Remove silence/padding
+        audio = librosa.effects.trim(audio, top_db=30)[0]
         
-        # Avoid division by zero
-        if rms < 1e-7:
-            return audio
-        
-        # Convert target dB to linear
-        target_linear = 10 ** (target_db / 20.0)
+        # Calculate current loudness
+        S = librosa.feature.melspectrogram(y=audio)
+        S_db = librosa.power_to_db(S, ref=np.max)
+        current_db = np.mean(S_db)
         
         # Apply gain
-        return (audio / rms) * target_linear
+        gain = 10 ** ((target_db - current_db) / 20.0)
+        audio = audio * gain
+        
+        # Clip to prevent clipping
+        audio = np.clip(audio, -1.0, 1.0)
+        
+        logger.info(f"Normalized audio: {current_db:.1f}dB -> {target_db:.1f}dB")
+        return audio
     
     @staticmethod
-    def remove_silence(
-        audio: np.ndarray,
-        threshold: float = 0.01,
-        min_duration: int = 512
-    ) -> np.ndarray:
+    def remove_silence(audio: np.ndarray, sample_rate: int = 16000, threshold_db: float = 40) -> np.ndarray:
         """
         Remove silence from audio
         
         Args:
             audio: Audio samples
-            threshold: Silence threshold (0-1)
-            min_duration: Minimum audio duration to keep (samples)
+            sample_rate: Sample rate
+            threshold_db: Silence threshold
             
         Returns:
-            Audio with silence removed
+            Audio without silence
         """
-        # Simple silence detection
-        energy = np.abs(audio)
-        
-        # Find non-silent frames
-        non_silent = energy > threshold
-        
-        # Find edges
-        edges = np.diff(non_silent.astype(int))
-        
-        # Get start and end indices
-        starts = np.where(edges == 1)[0]
-        ends = np.where(edges == -1)[0]
-        
-        if len(starts) == 0:
-            return audio
-        
-        # Combine segments
-        segments = []
-        for start, end in zip(starts, ends):
-            if end - start >= min_duration:
-                segments.append(audio[start:end])
-        
-        if segments:
-            return np.concatenate(segments)
-        else:
-            return audio
+        audio = librosa.effects.trim(audio, top_db=threshold_db)[0]
+        logger.info(f"Removed silence: {len(audio)} samples remaining")
+        return audio
+    
+    @staticmethod
+    def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> Tuple[np.ndarray, int]:
+        """Resample audio to target sample rate"""
+        if orig_sr != target_sr:
+            audio = librosa.resample(audio, orig_sr=orig_sr, target_sr=target_sr)
+            logger.info(f"Resampled audio: {orig_sr}Hz -> {target_sr}Hz")
+        return audio, target_sr
+    
+    @staticmethod
+    def save_audio(audio: np.ndarray, output_path: str, sample_rate: int = 16000):
+        """Save audio to file"""
+        sf.write(output_path, audio, sample_rate)
+        logger.info(f"Saved audio to {output_path}")
+    
+    @staticmethod
+    def audio_to_bytes(audio: np.ndarray, sample_rate: int = 16000, format: str = 'wav') -> bytes:
+        """Convert audio to bytes"""
+        output = io.BytesIO()
+        sf.write(output, audio, sample_rate, format=format)
+        output.seek(0)
+        return output.getvalue()
     
     @staticmethod
     def apply_noise_reduction(
@@ -206,36 +159,131 @@ class AudioProcessingService:
         except Exception as e:
             logger.error(f"Error reducing noise: {e}")
             return audio
+
+
+class VoiceConversionService:
+    """Service for voice conversion"""
     
     @staticmethod
-    def resample_audio(
-        audio: np.ndarray,
-        orig_sr: int,
-        target_sr: int
-    ) -> np.ndarray:
+    def extract_speaker_embedding(audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
-        Resample audio to target sample rate
+        Extract speaker embedding from audio
+        
+        For now, returns MFCC-based embedding. Will be replaced with actual HuBERT
         
         Args:
             audio: Audio samples
-            orig_sr: Original sample rate
-            target_sr: Target sample rate
+            sample_rate: Sample rate in Hz
             
         Returns:
-            Resampled audio
+            Speaker embedding (512-dim vector)
         """
-        if orig_sr == target_sr:
-            return audio
+        # Placeholder: Extract MFCC features as embedding
+        mfcc = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=13)
+        # Average across time and pad/truncate to 512 dims
+        mfcc_mean = np.mean(mfcc, axis=1)  # (13,)
+        embedding = np.zeros(512, dtype=np.float32)
+        embedding[:13] = mfcc_mean
         
-        try:
-            import librosa
-            return librosa.resample(audio, sr=orig_sr, target_sr=target_sr).astype(np.float32)
-        except:
-            logger.warning("librosa not available, using scipy resample")
-            from scipy import signal
+        logger.info(f"Extracted embedding shape: {embedding.shape}")
+        return embedding
+    
+    @staticmethod
+    def convert_voice(
+        audio: np.ndarray,
+        source_embedding: np.ndarray,
+        target_embedding: np.ndarray,
+        sample_rate: int = 16000,
+        f0_shift: int = 0
+    ) -> np.ndarray:
+        """
+        Convert voice from source to target speaker
+        
+        For now, applies pitch shift. Will use actual RVC model
+        
+        Args:
+            audio: Input audio
+            source_embedding: Source speaker embedding
+            target_embedding: Target speaker embedding
+            sample_rate: Sample rate in Hz
+            f0_shift: Pitch shift in semitones
             
-            num_samples = int(len(audio) * target_sr / orig_sr)
-            return signal.resample(audio, num_samples).astype(np.float32)
+        Returns:
+            Converted audio
+        """
+        try:
+            converted = audio.copy()
+            
+            # Apply pitch shifting if requested
+            if f0_shift != 0:
+                converted = librosa.effects.pitch_shift(converted, sr=sample_rate, n_steps=f0_shift)
+                logger.info(f"Applied pitch shift: {f0_shift} semitones")
+            
+            # Normalize
+            converted = AudioProcessingService.normalize_audio(converted)
+            
+            logger.info(f"Voice conversion complete: {len(converted)} samples")
+            return converted
+        except Exception as e:
+            logger.error(f"Error in voice conversion: {e}")
+            raise
+    
+    @staticmethod
+    def full_conversion_pipeline(
+        audio_bytes: bytes,
+        voice_id: int,
+        sample_rate: int = 16000,
+        f0_shift: int = 0
+    ) -> bytes:
+        """
+        Complete voice conversion pipeline
+        
+        Args:
+            audio_bytes: Input audio as bytes
+            voice_id: Target voice ID
+            sample_rate: Sample rate
+            f0_shift: Pitch shift in semitones
+            
+        Returns:
+            Converted audio as bytes
+        """
+        try:
+            # 1. Load audio
+            audio, sr = AudioProcessingService.load_audio_from_bytes(audio_bytes, sr=sample_rate)
+            logger.info(f"[1/5] Audio loaded: {len(audio)} samples")
+            
+            # 2. Normalize
+            audio = AudioProcessingService.normalize_audio(audio)
+            logger.info(f"[2/5] Audio normalized")
+            
+            # 3. Remove silence
+            audio = AudioProcessingService.remove_silence(audio, sr)
+            logger.info(f"[3/5] Silence removed: {len(audio)} samples")
+            
+            # 4. Extract embeddings
+            source_emb = VoiceConversionService.extract_speaker_embedding(audio, sr)
+            # Target embedding would come from predefined voice
+            target_emb = np.random.randn(512).astype(np.float32)
+            logger.info(f"[4/5] Embeddings extracted")
+            
+            # 5. Convert voice
+            converted = VoiceConversionService.convert_voice(
+                audio=audio,
+                source_embedding=source_emb,
+                target_embedding=target_emb,
+                sample_rate=sr,
+                f0_shift=f0_shift
+            )
+            logger.info(f"[5/5] Voice converted")
+            
+            # Save as WAV bytes
+            output_bytes = AudioProcessingService.audio_to_bytes(converted, sr, format='wav')
+            logger.info(f"Converted audio size: {len(output_bytes)} bytes")
+            
+            return output_bytes
+        except Exception as e:
+            logger.error(f"Pipeline error: {e}")
+            raise
 
 
 class RealTimeAudioProcessor:

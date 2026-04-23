@@ -25,8 +25,17 @@ class Voice {
   });
 
   factory Voice.fromJson(Map<String, dynamic> json) {
+    // Parse id - handle both int and string from backend
+    int parsedId;
+    final idValue = json['id'];
+    if (idValue is String) {
+      parsedId = int.parse(idValue);
+    } else {
+      parsedId = (idValue as int?) ?? 0;
+    }
+
     return Voice(
-      id: json['id'] as int,
+      id: parsedId,
       name: json['name'] as String,
       type: json['type'] as String,
       category: json['category'] as String?,

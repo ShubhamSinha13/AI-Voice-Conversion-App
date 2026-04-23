@@ -27,6 +27,7 @@ dependencies:
   audio_session: ^0.1.16
   flutter_sound: ^9.7.0
   just_audio: ^0.9.36
+  file_picker: ^9.0.0
   
   # Database & Storage
   hive: ^2.2.0

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'dart:io';
@@ -48,142 +49,103 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
   }
 
   Future<void> _startRecording() async {
-    _showError(
-        'Recording feature coming soon! Please upload an audio file instead.');
+    try {
+      final hasPermission = await _record.hasPermission();
+      if (!hasPermission) {
+        _showError('Microphone permission is required');
+        return;
+      }
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final recordingsDir = Directory('${appDir.path}/recordings');
+      if (!await recordingsDir.exists()) {
+        await recordingsDir.create(recursive: true);
+      }
+
+      final filePath =
+          '${recordingsDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      await _record.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          sampleRate: 44100,
+          bitRate: 128000,
+        ),
+        path: filePath,
+      );
+
+      setState(() {
+        _isRecording = true;
+        _recordDuration = Duration.zero;
+      });
+
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return;
+        setState(() {
+          _recordDuration = Duration(seconds: timer.tick);
+        });
+      });
+    } catch (e) {
+      _showError('Failed to start recording: $e');
+    }
   }
 
   Future<void> _stopRecording() async {
-    // Recording feature disabled for now
+    try {
+      final path = await _record.stop();
+      _timer?.cancel();
+
+      if (path == null) {
+        _showError('Recording failed, please try again');
+        return;
+      }
+
+      final file = File(path);
+      if (!await file.exists()) {
+        _showError('Recorded file is unavailable, please try again');
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isRecording = false;
+        _filePath = path;
+        _fileName = path.split(Platform.pathSeparator).last;
+        _sampleCount = 1;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isRecording = false;
+        });
+      }
+      _timer?.cancel();
+      _showError('Failed to stop recording: $e');
+    }
   }
 
   Future<void> _pickFile() async {
     try {
-      // Create or use sample audio files for testing
-      final dir = await getApplicationDocumentsDirectory();
-      final sampleDir = Directory('${dir.path}/voice_samples');
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+      );
 
-      if (!await sampleDir.exists()) {
-        await sampleDir.create(recursive: true);
-        // Create sample audio file for demo (simple WAV file structure)
-        _createSampleAudioFile('${sampleDir.path}/sample_audio_1.wav');
-        _createSampleAudioFile('${sampleDir.path}/sample_audio_2.wav');
-        _createSampleAudioFile('${sampleDir.path}/sample_audio_3.wav');
-      }
-
-      // Show available audio files
-      final files = sampleDir.listSync().whereType<File>();
-      final audioFiles = files
-          .where((f) => f.path.endsWith('.wav') || f.path.endsWith('.mp3'))
-          .toList();
-
-      if (!mounted) return;
-
-      if (audioFiles.isEmpty) {
-        _showError('No audio files found. Creating sample files...');
-        _createSampleAudioFile('${sampleDir.path}/sample_audio.wav');
-        await Future.delayed(const Duration(milliseconds: 500));
-        _pickFile();
+      final selectedPath = result?.files.single.path;
+      if (selectedPath == null) {
         return;
       }
 
-      // Show file selection dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Select Audio File'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              itemCount: audioFiles.length,
-              itemBuilder: (context, index) {
-                final file = audioFiles[index];
-                final fileName = file.path.split('/').last;
-                final size = file.lengthSync();
-
-                return ListTile(
-                  title: Text(fileName),
-                  subtitle: Text('${(size / 1024).toStringAsFixed(1)} KB'),
-                  onTap: () {
-                    setState(() {
-                      _filePath = file.path;
-                      _fileName = fileName;
-                      _recordDuration = const Duration(seconds: 5);
-                    });
-                    Navigator.pop(context);
-                    _showError('Audio file selected: $fileName');
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      );
+      if (!mounted) return;
+      setState(() {
+        _filePath = selectedPath;
+        _fileName = result!.files.single.name;
+        _sampleCount = 1;
+      });
     } catch (e) {
       _showError('Failed to pick file: $e');
     }
-  }
-
-  void _createSampleAudioFile(String filePath) {
-    try {
-      final file = File(filePath);
-      // Create a simple WAV file structure for testing
-      final wavHeader = _generateWavHeader(44100 * 2); // 2 seconds of audio
-      file.writeAsBytesSync(wavHeader);
-    } catch (e) {
-      debugPrint('Failed to create sample audio: $e');
-    }
-  }
-
-  List<int> _generateWavHeader(int audioDataSize) {
-    const sampleRate = 44100;
-    const numChannels = 1;
-    const bytesPerSample = 2;
-    final byteRate = sampleRate * numChannels * bytesPerSample;
-    final blockAlign = numChannels * bytesPerSample;
-    final subChunk2Size = audioDataSize;
-    final chunkSize = 36 + subChunk2Size;
-
-    final header = <int>[
-      // RIFF header
-      82, 73, 70, 70, // "RIFF"
-      chunkSize & 0xFF,
-      (chunkSize >> 8) & 0xFF,
-      (chunkSize >> 16) & 0xFF,
-      (chunkSize >> 24) & 0xFF,
-      87, 65, 86, 69, // "WAVE"
-      // fmt sub-chunk
-      102, 109, 116, 32, // "fmt "
-      16, 0, 0, 0, // SubChunk1Size
-      1, 0, // AudioFormat (PCM)
-      numChannels, 0, // NumChannels
-      sampleRate & 0xFF,
-      (sampleRate >> 8) & 0xFF,
-      (sampleRate >> 16) & 0xFF,
-      (sampleRate >> 24) & 0xFF,
-      byteRate & 0xFF,
-      (byteRate >> 8) & 0xFF,
-      (byteRate >> 16) & 0xFF,
-      (byteRate >> 24) & 0xFF,
-      blockAlign & 0xFF,
-      (blockAlign >> 8) & 0xFF,
-      16, 0, // BitsPerSample
-      // data sub-chunk
-      100, 97, 116, 97, // "data"
-      subChunk2Size & 0xFF,
-      (subChunk2Size >> 8) & 0xFF,
-      (subChunk2Size >> 16) & 0xFF,
-      (subChunk2Size >> 24) & 0xFF,
-      // Audio data (silence/zeros)
-      ...List<int>.filled(audioDataSize, 0),
-    ];
-
-    return header;
   }
 
   Future<void> _uploadVoice() async {
@@ -237,8 +199,7 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
             backgroundColor: Colors.green,
           ),
         );
-        Future.delayed(const Duration(milliseconds: 500))
-            .then((_) => Navigator.of(context).pop());
+        Navigator.of(context).pop();
       }
     } catch (e) {
       _showError('Failed to upload voice: $e');
@@ -264,27 +225,8 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
-  double _getAccuracy(int sampleCount) {
-    if (sampleCount == 0) return 0;
-    if (sampleCount == 1) return 80;
-    if (sampleCount == 2) return 90;
-    if (sampleCount == 3) return 96;
-    if (sampleCount >= 4) return 99;
-    return 0;
-  }
-
-  String _getAccuracyMessage(int sampleCount) {
-    if (sampleCount == 0) return 'Add samples for accuracy';
-    if (sampleCount == 1) return '80% accuracy - Add 1 more for 90%';
-    if (sampleCount == 2) return '90% accuracy - Add 1 more for 96%';
-    if (sampleCount == 3) return '96% accuracy - Add 1+ more for 99%+';
-    return '99%+ accuracy - Perfect!';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Custom Voice'),
@@ -353,7 +295,7 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
                               Container(
                                 width: 12,
                                 height: 12,
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   color: Colors.red,
                                   shape: BoxShape.circle,
                                 ),
@@ -375,7 +317,7 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
                         else if (_filePath != null)
                           Column(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.check_circle,
                                 color: Colors.green,
                                 size: 48,
@@ -449,11 +391,11 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
                   const SizedBox(height: 16),
 
                   // Or Divider
-                  Row(
+                  const Row(
                     children: [
                       Expanded(child: Divider()),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
                         child: Text('OR'),
                       ),
                       Expanded(child: Divider()),
@@ -559,7 +501,8 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
           width: isCurrentLevel ? 2 : 1,
         ),
         borderRadius: BorderRadius.circular(12),
-        color: isCurrentLevel ? color.withOpacity(0.1) : Colors.transparent,
+        color:
+            isCurrentLevel ? color.withValues(alpha: 0.1) : Colors.transparent,
       ),
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -591,7 +534,7 @@ class _VoiceInputScreenState extends ConsumerState<VoiceInputScreen>
                 minHeight: 8,
                 backgroundColor:
                     Theme.of(context).colorScheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation(color),
+                valueColor: const AlwaysStoppedAnimation(color),
               ),
             ),
           ),

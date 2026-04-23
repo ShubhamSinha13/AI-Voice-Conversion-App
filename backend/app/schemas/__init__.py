@@ -48,6 +48,12 @@ class VoiceResponse(BaseModel):
     predefined_name: Optional[str]
     user_defined_name: Optional[str]
     sample_count: int
+    accuracy_percentage: float
+    is_predefined: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 # Response Schemas
@@ -58,18 +64,12 @@ class MessageResponse(BaseModel):
     
     class Config:
         from_attributes = True
-    accuracy_percentage: float
-    is_predefined: bool
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class VoiceDetailResponse(VoiceResponse):
     """Detailed voice response"""
-    samples_uploaded_at: List[datetime]
-    updated_at: datetime
+    samples_uploaded_at: List[datetime] = []
+    updated_at: Optional[datetime] = None
 
 
 class VoiceListResponse(BaseModel):

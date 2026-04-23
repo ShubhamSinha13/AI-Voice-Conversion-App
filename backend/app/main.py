@@ -13,6 +13,7 @@ from app.api.voices import router as voices_router
 from app.api.voice_samples import router as voice_samples_router
 from app.api.voice_conversion import router as voice_conversion_router
 from app.api.voice_preview import router as voice_preview_router
+# from app.api.ml_models import router as ml_models_router  # Disabled: needs librosa/scipy
 from datetime import timedelta
 import logging
 
@@ -40,6 +41,7 @@ app.include_router(voices_router)
 app.include_router(voice_samples_router)
 app.include_router(voice_conversion_router)
 app.include_router(voice_preview_router)
+# app.include_router(ml_models_router)  # Disabled: needs librosa/scipy
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

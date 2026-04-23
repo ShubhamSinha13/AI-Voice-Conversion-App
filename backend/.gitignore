@@ -25,6 +25,7 @@ env/
 
 # Uploads
 uploads/
+model_cache/
 *.mp3
 *.wav
 *.m4a

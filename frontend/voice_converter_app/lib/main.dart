@@ -14,22 +14,84 @@ class VoiceConverterApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseLight = ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF3B82F6),
+        brightness: Brightness.light,
+      ),
+      useMaterial3: true,
+      fontFamily: 'Roboto',
+    );
+
+    final baseDark = ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF3B82F6),
+        brightness: Brightness.dark,
+      ),
+      useMaterial3: true,
+    );
+
     return MaterialApp(
       title: 'Voice Converter',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.light,
+      theme: baseLight.copyWith(
+        appBarTheme: AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: baseLight.colorScheme.surface,
         ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: baseLight.colorScheme.outlineVariant,
+            ),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: baseLight.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: baseLight.colorScheme.primary, width: 1.6),
+          ),
+        ),
       ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
+      darkTheme: baseDark.copyWith(
+        appBarTheme: AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: baseDark.colorScheme.surface,
         ),
-        useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
       home: const AuthGate(),

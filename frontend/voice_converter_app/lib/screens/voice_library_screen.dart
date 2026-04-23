@@ -24,7 +24,6 @@ class _VoiceLibraryScreenState extends ConsumerState<VoiceLibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final customVoices = ref.watch(customVoicesProvider);
-    final voiceState = ref.watch(voiceProvider);
 
     return Scaffold(
       appBar: AppBar(

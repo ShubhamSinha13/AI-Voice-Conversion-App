@@ -68,7 +68,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
@@ -261,7 +260,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       final apiService = ApiService();
-      final response = await apiService.register(
+      await apiService.register(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         username: _usernameController.text.trim(),
